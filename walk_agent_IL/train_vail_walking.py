@@ -239,7 +239,7 @@ def main():
                        help='Maximum gradient norm')
     
     # Training parameters
-    parser.add_argument('--total_timesteps', type=int, default=1000000,
+    parser.add_argument('--total_timesteps', type=int, default=2000000,
                        help='Total training timesteps')
     parser.add_argument('--buffer_size', type=int, default=2048,
                        help='Experience buffer size')
@@ -251,9 +251,9 @@ def main():
                        help='Number of discriminator update epochs')
     
     # Logging and saving
-    parser.add_argument('--log_interval', type=int, default=10,
+    parser.add_argument('--log_interval', type=int, default=50,
                        help='Log interval (episodes)')
-    parser.add_argument('--save_interval', type=int, default=100,
+    parser.add_argument('--save_interval', type=int, default=1000,
                        help='Save interval (episodes)')
     parser.add_argument('--checkpoint_dir', type=str, default='./vail_checkpoints',
                        help='Directory to save checkpoints')

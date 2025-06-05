@@ -636,7 +636,7 @@ class VAILAlgorithm:
             'entropy_loss': entropy_loss.item()
         }
     
-    def train(self, total_timesteps, log_interval=10, save_interval=100, save_dir='./vail_checkpoints'):
+    def train(self, total_timesteps, log_interval=50, save_interval=1000, save_dir='./vail_checkpoints'):
         """Train VAIL agent"""
         os.makedirs(save_dir, exist_ok=True)
         
