@@ -2,6 +2,12 @@
 # Copyright (c) Facebook, Inc. and its affiliates
 Authors  :: Vikash Kumar (vikashplus@gmail.com), Vittorio Caggiano (caggiano@gmail.com)
 ================================================= -->
+
+
+Kolin's code in folder walk_agent_IL. Visualization can be found in walk_agent_IL/data.
+
+-----------------------------------------------------------------------------------------------------------------------------------------
+
 <img src="https://github.com/myohub/myosuite/blob/main/docs/source/images/Full%20Color%20Horizontal%20wider.png?raw=true" width=800>
 
 [![Support Ukraine](https://img.shields.io/badge/Support-Ukraine-FFD500?style=flat&labelColor=005BBB)](https://opensource.facebook.com/support-ukraine)

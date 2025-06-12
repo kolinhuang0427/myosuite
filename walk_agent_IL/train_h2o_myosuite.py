@@ -35,16 +35,16 @@ class MyoSuiteH2OWrapper:
     
     def __init__(self, env_name: str = 'myoLegWalk-v0'):
         self.env_name = env_name
-        
-        if MYOSUITE_AVAILABLE:
-            try:
-                self.env = gym.make(env_name)
-                print(f"Created MyoSuite environment: {env_name}")
-            except Exception as e:
-                print(f"Failed to create MyoSuite environment {env_name}: {e}")
-                self.env = self._create_dummy_env()
-        else:
-            self.env = self._create_dummy_env()
+        self.env = gym.make(env_name)
+        # if MYOSUITE_AVAILABLE:
+        #     try:
+        #         self.env = gym.make(env_name)
+        #         print(f"Created MyoSuite environment: {env_name}")
+        #     except Exception as e:
+        #         print(f"Failed to create MyoSuite environment {env_name}: {e}")
+        #         self.env = self._create_dummy_env()
+        # else:
+        #     self.env = self._create_dummy_env()
         
         # Extract environment information
         self.muscle_action_dim = self.env.action_space.shape[0]
@@ -260,7 +260,7 @@ def main():
     parser.add_argument('--env_name', type=str, default='myoLegWalk-v0',
                        help='MyoSuite environment name')
     parser.add_argument('--motion_data', type=str, 
-                       default='data/h2o_retargeted_myosuite_data_fixed.npz',
+                       default='data/h2o_retargeted_myosuite_data_xyz.npz',
                        help='Path to retargeted motion data')
     
     # Training arguments
@@ -340,7 +340,7 @@ def main():
     # Check if motion data exists
     if not os.path.exists(args.motion_data):
         print(f"Error: Motion data not found at {args.motion_data}")
-        print("Please run h2o_retargeting_fixed.py first to generate the retargeted data")
+        print("Please run h2o_retargeting.py first to generate the retargeted data")
         return
     
     # Create environment

@@ -13,7 +13,7 @@ import os
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../..'))
 
-def convert_theia_to_myo_data_h2o_fixed(theia_table_path):
+def convert_theia_to_myo_data_h2o(theia_table_path):
     """
     Convert Theia motion capture data to myosuite format using H2O retargeting methodology.
     Correctly handles the complex header structure.
@@ -93,6 +93,36 @@ def convert_theia_to_myo_data_h2o_fixed(theia_table_path):
     print("\nStage 2: Motion Retargeting")
     
     myo_data = {'qpos': pd.DataFrame(), 'qvel': pd.DataFrame()}
+    
+    # Mapping from Theia joint names to MyoSuite joint names
+    theia_to_myo_mapping = {
+        'AB01_Jimin:LeftHip': 'hip_l',
+        'AB01_Jimin:RightHip': 'hip_r', 
+        'AB01_Jimin:LeftKnee': 'knee_l',
+        'AB01_Jimin:RightKnee': 'knee_r',
+        'AB01_Jimin:LeftAnkle': 'ankle_l',
+        'AB01_Jimin:RightAnkle': 'ankle_r',
+        'AB01_Jimin:LeftShoulder': 'shoulder_l',
+        'AB01_Jimin:RightShoulder': 'shoulder_r',
+        'AB01_Jimin:LeftElbow': 'elbow_l',
+        'AB01_Jimin:RightElbow': 'elbow_r',
+        'AB01_Jimin:LeftWrist': 'wrist_l',
+        'AB01_Jimin:RightWrist': 'wrist_r',
+        'AB01_Jimin:LeftSpine': 'spine_l',
+        'AB01_Jimin:RightSpine': 'spine_r',
+        'AB01_Jimin:LeftNeck': 'neck_l',
+        'AB01_Jimin:RightNeck': 'neck_r',
+        'AB01_Jimin:LeftHead': 'head_l',
+        'AB01_Jimin:RightHead': 'head_r',
+        'AB01_Jimin:LeftThorax': 'thorax_l',
+        'AB01_Jimin:RightThorax': 'thorax_r',
+        'AB01_Jimin:LeftPelvis': 'pelvis_l',
+        'AB01_Jimin:RightPelvis': 'pelvis_r',
+        'AB01_Jimin:LeftClavicle': 'clavicle_l',
+        'AB01_Jimin:RightClavicle': 'clavicle_r',
+        'AB01_Jimin:LeftFootProgress': 'foot_progress_l',
+        'AB01_Jimin:RightFootProgress': 'foot_progress_r'
+    }
 
     def extract_joint_data_h2o(myo_joint_name, search_pattern, axis='X', flip=1, smooth_window=5):
         """Enhanced extraction function with H2O retargeting features"""
@@ -153,6 +183,9 @@ def convert_theia_to_myo_data_h2o_fixed(theia_table_path):
                 data = np.clip(data, joint_min, joint_max)
             
             myo_data['qpos'][myo_joint_name] = data
+            if myo_joint_name == 'hip_adduction_l' or myo_joint_name == 'hip_adduction_r' : #or myo_joint_name == 'hip_rotation_l' or myo_joint_name == 'hip_rotation_r':
+                myo_data['qpos'][myo_joint_name] = -data
+                
             print(f"Retargeted {myo_joint_name}: {len(data)} samples from {base_col} {axis} axis")
             return True
             
@@ -160,19 +193,125 @@ def convert_theia_to_myo_data_h2o_fixed(theia_table_path):
             print(f"Error extracting {myo_joint_name}: {e}")
             return False
 
-    # Apply the H2O retargeting for each joint
-    extract_joint_data_h2o("hip_flexion_l", "LeftHipAngles_Theia", "X")
-    extract_joint_data_h2o("hip_flexion_r", "RightHipAngles_Theia", "X")
-    extract_joint_data_h2o("hip_adduction_l", "LeftHipAngles_Theia", "Y")
-    extract_joint_data_h2o("hip_adduction_r", "RightHipAngles_Theia", "Y")
-    extract_joint_data_h2o("hip_rotation_l", "LeftHipAngles_Theia", "Z")
-    extract_joint_data_h2o("hip_rotation_r", "RightHipAngles_Theia", "Z")
-    extract_joint_data_h2o("knee_angle_l", "LeftKneeAngles_Theia", "X")
-    extract_joint_data_h2o("knee_angle_r", "RightKneeAngles_Theia", "X")
-    extract_joint_data_h2o("ankle_angle_l", "LeftAnkleAngles_Theia", "X")
-    extract_joint_data_h2o("ankle_angle_r", "RightAnkleAngles_Theia", "X")
-    extract_joint_data_h2o("subtalar_angle_l", "LeftAnkleAngles_Theia", "Y")
-    extract_joint_data_h2o("subtalar_angle_r", "RightAnkleAngles_Theia", "Y")
+    def extract_all_available_joints():
+        """Automatically discover and extract all available joint data"""
+        print("\nAutomatically discovering all available joint data...")
+        
+        discovered_joints = []
+        
+        # Group joints by their base name and find all available axes
+        joint_groups = {}
+        for orig_col, col_idx in joint_angle_mapping.items():
+            if 'Angles_Theia' in orig_col:
+                # Extract the joint base name
+                joint_base = orig_col.split('Angles_Theia')[0]
+                if joint_base not in joint_groups:
+                    joint_groups[joint_base] = []
+                joint_groups[joint_base].append((orig_col, col_idx))
+        
+        print(f"Discovered {len(joint_groups)} joint groups:")
+        
+        for joint_base, columns in joint_groups.items():
+            print(f"\n  Joint: {joint_base}")
+            myo_base = theia_to_myo_mapping.get(joint_base, joint_base.lower().replace(' ', '_'))
+            
+            # Sort columns to ensure X, Y, Z order
+            columns.sort(key=lambda x: x[1])  # Sort by column index
+            
+            axes_found = []
+            for i, (orig_col, col_idx) in enumerate(columns):
+                axis_names = ['X', 'Y', 'Z']
+                if i < len(axis_names):
+                    axis = axis_names[i]
+                    axis_descriptions = ['flexion', 'adduction', 'rotation']
+                    axis_desc = axis_descriptions[i] if i < len(axis_descriptions) else f'axis{i+1}'
+                    
+                    joint_name = f"{myo_base}_{axis_desc}"
+                    search_pattern = f"{joint_base}Angles_Theia"
+                    
+                    # Check if data is actually available and has values
+                    try:
+                        test_data = df.iloc[:, col_idx].astype(float)
+                        if not test_data.isna().all() and len(test_data.dropna()) > 100:  # Require at least 100 valid data points
+                            if extract_joint_data_h2o(joint_name, search_pattern, axis):
+                                axes_found.append(f"{axis}({axis_desc})")
+                                discovered_joints.append(joint_name)
+                            else:
+                                print(f" {axis} axis extraction failed")
+                        else:
+                            print(f"  {axis} axis has insufficient data")
+                    except Exception as e:
+                        print(f" {axis} axis error: {e}")
+            
+            if axes_found:
+                print(f"  Extracted axes: {', '.join(axes_found)}")
+            else:
+                print(f" No valid data found")
+        
+        return discovered_joints
+
+    # First, do automatic discovery
+    auto_discovered = extract_all_available_joints()
+    
+    # Then add the systematic extraction as before
+    print(f"\nAuto-discovered {len(auto_discovered)} joints: {sorted(auto_discovered)}")
+    
+    # Continue with the existing systematic approach to ensure we don't miss anything
+
+    # Extract all XYZ data for each joint
+    extracted_joints = auto_discovered.copy()  # Start with auto-discovered joints
+    
+    # Find all unique joint base names from the angle data for systematic extraction
+    unique_joints = set()
+    for orig_col in joint_angle_mapping.keys():
+        if 'Angles_Theia' in orig_col:
+            joint_base = orig_col.split('Angles_Theia')[0]
+            unique_joints.add(joint_base)
+    
+    print(f"\nSystematic extraction for {len(unique_joints)} joint groups...")
+    
+    for theia_joint in sorted(unique_joints):
+        myo_base = theia_to_myo_mapping.get(theia_joint, theia_joint.lower())
+        
+        # Extract X, Y, Z axes for this joint if not already extracted
+        axes_extracted = []
+        for axis, axis_name in [('X', 'flexion'), ('Y', 'adduction'), ('Z', 'rotation')]:
+            joint_name = f"{myo_base}_{axis_name}"
+            
+            # Only extract if not already done in auto-discovery
+            if joint_name not in extracted_joints:
+                search_pattern = f"{theia_joint}Angles_Theia"
+                
+                if extract_joint_data_h2o(joint_name, search_pattern, axis):
+                    axes_extracted.append(axis)
+                    extracted_joints.append(joint_name)
+        
+        if axes_extracted:
+            print(f"  ✅ {theia_joint} -> {myo_base}: additionally extracted {axes_extracted} axes")
+    
+    # Additional specific extractions for known mappings to maintain compatibility
+    print("\nExtracting specific joint mappings for MyoSuite compatibility...")
+    
+    # Standard MyoSuite joint names that we want to ensure are available
+    standard_extractions = [
+        ("hip_flexion_l", "LeftHipAngles_Theia", "X"),
+        ("hip_flexion_r", "RightHipAngles_Theia", "X"),
+        ("hip_adduction_l", "LeftHipAngles_Theia", "Y"),
+        ("hip_adduction_r", "RightHipAngles_Theia", "Y"),
+        ("hip_rotation_l", "LeftHipAngles_Theia", "Z"),
+        ("hip_rotation_r", "RightHipAngles_Theia", "Z"),
+        ("knee_angle_l", "LeftKneeAngles_Theia", "X"),
+        ("knee_angle_r", "RightKneeAngles_Theia", "X"),
+        ("ankle_angle_l", "LeftAnkleAngles_Theia", "X"),
+        ("ankle_angle_r", "RightAnkleAngles_Theia", "X"),
+        ("subtalar_angle_l", "LeftAnkleAngles_Theia", "Y"),
+        ("subtalar_angle_r", "RightAnkleAngles_Theia", "Y"),
+    ]
+    
+    for joint_name, search_pattern, axis in standard_extractions:
+        if joint_name not in myo_data['qpos'].columns and joint_name not in extracted_joints:
+            if extract_joint_data_h2o(joint_name, search_pattern, axis):
+                extracted_joints.append(joint_name)
     
     # For MTP angles, try to find foot/toe data
     if not extract_joint_data_h2o("mtp_angle_l", "l_toes_4X4", "RX", -1):
@@ -180,14 +319,17 @@ def convert_theia_to_myo_data_h2o_fixed(theia_table_path):
         if "ankle_angle_l" in myo_data['qpos'].columns:
             myo_data['qpos']["mtp_angle_l"] = np.zeros(len(myo_data['qpos']["ankle_angle_l"]))
             print("Using zero values for mtp_angle_l")
+            extracted_joints.append("mtp_angle_l")
     
     if not extract_joint_data_h2o("mtp_angle_r", "r_toes_4X4", "RX", -1):
         # Fallback: use zero or estimate from ankle
         if "ankle_angle_r" in myo_data['qpos'].columns:
             myo_data['qpos']["mtp_angle_r"] = np.zeros(len(myo_data['qpos']["ankle_angle_r"]))
             print("Using zero values for mtp_angle_r")
+            extracted_joints.append("mtp_angle_r")
 
-    print(f"\nExtracted {len(myo_data['qpos'].columns)} joint angle series")
+    print(f"\nTotal extracted joints: {len(set(extracted_joints))}")
+    print(f"Final joint list: {sorted(set(extracted_joints))}")
     
     # Generate velocities from positions
     for joint in myo_data['qpos'].columns:
@@ -256,27 +398,27 @@ def visualize_retargeted_motion(myo_data, joint_names=None):
     
     axes[-1].set_xlabel('Time Steps')
     plt.tight_layout()
-    plt.savefig('h2o_retargeted_motion_fixed.png', dpi=150, bbox_inches='tight')
+    plt.savefig('h2o_retargeted_motion.png', dpi=150, bbox_inches='tight')
     plt.show()
     
-    print("Visualization saved as h2o_retargeted_motion_fixed.png")
+    print("Visualization saved as h2o_retargeted_motion.png")
 
 def main():
     """Main function to run the fixed H2O retargeting pipeline."""
     # Run the H2O retargeting pipeline
-    myo_data, myosuite_data = convert_theia_to_myo_data_h2o_fixed('AB01_Jimin_1p0mps_1.csv')
+    myo_data, myosuite_data = convert_theia_to_myo_data_h2o('AB01_Jimin_1p0mps_1.csv')
     
     # Save the retargeted data
     print("\nSaving retargeted data...")
     
     # Save as pickle (compatible with existing myosuite code)
-    with open('h2o_retargeted_myo_data_fixed.pkl', 'wb') as file:
+    with open('h2o_retargeted_myo_data_xyz.pkl', 'wb') as file:
         pickle.dump(myo_data, file)
     
     # Save as npz (for easy loading)
-    np.savez('h2o_retargeted_myosuite_data_fixed.npz', **myosuite_data)
+    np.savez('h2o_retargeted_myosuite_data_xyz.npz', **myosuite_data)
     
-    print("Saved h2o_retargeted_myo_data_fixed.pkl and h2o_retargeted_myosuite_data_fixed.npz")
+    print("Saved h2o_retargeted_myo_data_xyz.pkl and h2o_retargeted_myosuite_data_xyz.npz")
     
     # Visualize results
     if len(myo_data['qpos'].columns) > 0:

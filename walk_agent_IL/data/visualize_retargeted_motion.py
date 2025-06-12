@@ -264,7 +264,7 @@ def main():
     """Main function to visualize retargeted motion"""
     parser = argparse.ArgumentParser(description='Visualize retargeted motion on MyoSkeleton')
     parser.add_argument('--motion_data', '-m', type=str, 
-                       default='h2o_retargeted_myosuite_data_fixed.npz',
+                       default='h2o_retargeted_myosuite_data_xyz.npz',
                        help='Path to retargeted motion data file')
     parser.add_argument('--output', '-o', type=str, 
                        default='../videos/retargeted_h2o_motion.mp4',

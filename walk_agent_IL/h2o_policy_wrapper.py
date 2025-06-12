@@ -50,7 +50,7 @@ class H2OPolicyWrapper:
             print(f"🤖 Loading H2O policy for default env: {env_name}")
         
         if model_path is None:
-            model_path = os.path.join(current_dir, 'h2o_results_long', 'h2o_agent_final.pt')
+            model_path = os.path.join(current_dir, 'h2o_results', 'h2o_agent_checkpoint_128000.pt')
         
         if not os.path.exists(model_path):
             raise FileNotFoundError(f"Model not found at {model_path}")
@@ -64,7 +64,7 @@ class H2OPolicyWrapper:
         print(f"🔧 Using device: {self.device}")
         
         # Load motion data
-        motion_data_path = os.path.join(current_dir, 'data', 'h2o_retargeted_myosuite_data_fixed.npz')
+        motion_data_path = os.path.join(current_dir, 'data', 'h2o_retargeted_myosuite_data_xyz.npz')
         if not os.path.exists(motion_data_path):
             raise FileNotFoundError(f"Motion data not found at {motion_data_path}")
         
